@@ -1,7 +1,7 @@
 var num = 57;
 var numTop = 5;
 
-var margin = {top: 70, right: 80, bottom: 70, left: 70};
+var margin = {top: 60, right: 80, bottom: 60, left: 70};
 var width = 950,
     height = 700;
 
@@ -59,6 +59,12 @@ d3.queue()
         center: (center.indexOf(member.name) >= 0)? "y" : "n"
       });
     });
+    data.push({
+      year: single.name,
+      name: "Senbatsu",
+      order: 0.5,
+      center: "n"
+    });
     // single_members.forEach(function(member_name, i) {
     //   data.push({
     //     year: single.name,
@@ -85,7 +91,7 @@ d3.queue()
 
   svg.append("g")
     .attr("class", "x axis")
-    .attr("transform", "translate(0," + (height-margin.bottom) + ")")
+    .attr("transform", "translate(0," + (height-margin.bottom+5) + ")")
     .call(xAxisBottom)
     .selectAll('text')
       .attr("text-anchor", "start")
@@ -170,32 +176,42 @@ d3.queue()
   // Draw a circle for each center
   var countrySumRank = nested.map(function(d) { return d.key; });
   for (var year in single_centers) {
-    if (countrySumRank.indexOf(single_centers[year]) < numTop) {
-      ctx.fillStyle = color(single_centers[year]);
-    } else {
-      ctx.fillStyle = "#888";
-    }
-
-    if (byYear[year] && byYear[year][single_centers[year]]) {
+    ctx.fillStyle = "#888";
+    // if (countrySumRank.indexOf(single_centers[year]) < numTop) {
+    //   ctx.fillStyle = color(single_centers[year]);
+    // } else {
+    //   ctx.fillStyle = "#888";
+    // }
+    
+    single_centers[year].forEach(function(center) {
       ctx.beginPath();
-      ctx.arc(xscale(year), yscale(byYear[year][single_centers[year]]), 5, 0, 2*Math.PI);
+      ctx.arc(xscale(year), yscale(byYear[year][center]), 5, 0, 2*Math.PI);
       ctx.fill();
       ctx.closePath();
-    }
+    });
   }
 
   nested.slice(0, num).reverse().forEach(function(name, i) {
     var yearspopular = name.value.data;
 
-    if (i >= num-numTop) {
+    if (name.key === "Senbatsu") {
       ctx.globalAlpha = 0.85;
-      ctx.strokeStyle = color(name.key);
+      ctx.strokeStyle = color(0);
       ctx.lineWidth = 2.5;
     } else {
       ctx.globalAlpha = 0.55;
       ctx.strokeStyle = "#888";
       ctx.lineWidth = 1;
     }
+    // if (i >= num-numTop) {
+    //   ctx.globalAlpha = 0.85;
+    //   ctx.strokeStyle = color(name.key);
+    //   ctx.lineWidth = 2.5;
+    // } else {
+    //   ctx.globalAlpha = 0.55;
+    //   ctx.strokeStyle = "#888";
+    //   ctx.lineWidth = 1;
+    // }
 
     // bump line
     ctx.globalCompositeOperation = "darken";
@@ -227,11 +243,16 @@ d3.queue()
   ctx.font = "10px sans-serif";
   nested.slice(0, num).reverse().forEach(function(name, i) {
     var yearspopular = name.value.data;
-    if (i >= num-numTop) {
-      ctx.fillStyle = color(name.key);
+    if (name.key === "Senbatsu") {
+      ctx.fillStyle = color(0);
     } else {
       ctx.fillStyle = "#555";
     }
+    // if (i >= num-numTop) {
+    //   ctx.fillStyle = color(name.key);
+    // } else {
+    //   ctx.fillStyle = "#555";
+    // }
 
     ctx.globalCompositeOperation = "source-over";
     ctx.globalAlpha = 0.9;
@@ -258,7 +279,7 @@ d3.queue()
   });
 
   // legend
-  var legendPos = {x: width*0.12, y: height*0.78};
+  var legendPos = {x: width*0.12, y: height*0.80};
 
   ctx.fillStyle = "#888";
   ctx.beginPath();
