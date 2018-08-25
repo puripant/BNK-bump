@@ -1,5 +1,4 @@
-var num = 57;
-var numTop = 5;
+var num = 58;
 
 var margin = {top: 60, right: 80, bottom: 60, left: 70};
 var width = 950,
@@ -17,12 +16,22 @@ var svg = d3.select("svg")
     .style("width", width + "px")
     .style("height", height + "px");
 
-var color = d3.scaleOrdinal()
-  .range(["#DB7F85", "#50AB84", "#4C6C86", "#C47DCB", "#B59248", "#DD6CA7", "#E15E5A", "#5DA5B3", "#725D82", "#54AF52", "#954D56"]);
+let color = d3.interpolatePuRd;
+// var color = d3.scaleOrdinal()
+//   .range(["#DB7F85", "#50AB84", "#4C6C86", "#C47DCB", "#B59248", "#DD6CA7", "#E15E5A", "#5DA5B3", "#725D82", "#54AF52", "#954D56"]);
+
+const top_singles = ["Aitakatta", "Koisuru Fortune Cookie", "Shonichi", "Kimi wa Melody"];
 
 var xscale = d3.scalePoint()
   // .domain([1959, 2017])
-  .range([margin.left, width-margin.right]);
+  .range([margin.left, width-margin.right])
+  .padding(0.5);
+let invertXscale = function(x) {
+  let domain = xscale.domain();
+  let range = xscale.range();
+  let rangePoints = d3.range(range[0], range[1], xscale.step());
+  return domain[d3.bisect(rangePoints, x) - 1];
+}
 
 var xAxisTop = d3.axisTop();
 var xAxisBottom = d3.axisBottom();
@@ -84,7 +93,7 @@ d3.queue()
     .attr("class", "x axis")
     .attr("transform", "translate(0," + (margin.top-10) + ")")
     .call(xAxisTop)
-    .selectAll('text')
+    .selectAll("text")
       .attr("text-anchor", "start")
       // .attr("dx", "1em")
       .attr("transform", "rotate(-15)");
@@ -93,7 +102,7 @@ d3.queue()
     .attr("class", "x axis")
     .attr("transform", "translate(0," + (height-margin.bottom+5) + ")")
     .call(xAxisBottom)
-    .selectAll('text')
+    .selectAll("text")
       .attr("text-anchor", "start")
       // .attr("dx", "1em")
       .attr("transform", "rotate(15)");
@@ -106,8 +115,8 @@ d3.queue()
     .attr("x1", -hiddenMargin)
     .attr("y1", margin.top - 10)
     .attr("x2", -hiddenMargin)
-    .attr("y2", height - margin.bottom)
-    .style("stroke-width", function() { return xscale(2) - xscale(0); }) //two year interval
+    .attr("y2", height - margin.bottom + 5)
+    .style("stroke-width", function() { return xscale.step(); })
     .style("opacity", 0);
   var mouseTrap = svg.append("rect")
     .attr("width", width)
@@ -116,21 +125,10 @@ d3.queue()
     .on("mouseover", function() { verticalGuide.style("opacity", 0.1); })
     .on("mouseout", function() { verticalGuide.style("opacity", 0); })
     .on("mousemove", function() {
-      var mousex = d3.mouse(this)[0]
-      var x = xscale.domain()[d3.bisect(xscale.range(), mousex) - 1]; //xscale.invert(mousex);
-      var found = false;
-      for (var i = 0; i < single_names.length; i++) {
-        if (Math.abs(single_names[i] - x) <= 1) { // game interval (2 years) in half
-          highlightedYear = single_names[i];
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        highlightedYear = undefined;
-      }
+      let mousex = d3.mouse(this)[0]
+      let highlightedYear = invertXscale(mousex);
 
-      mouseTrap.style("cursor", highlightedYear? "pointer":"auto");
+      // mouseTrap.style("cursor", highlightedYear? "pointer":"auto");
       verticalGuide.attr("transform", "translate(" + (xscale(highlightedYear)+hiddenMargin) + ", 0)");
     });
 
@@ -144,15 +142,15 @@ d3.queue()
       };
     })
     .entries(data)
-    .sort(function(a, b) { return d3.descending(a.value.sum, b.value.sum); })
+    .sort(function(a, b) { return d3.ascending(a.value.sum, b.value.sum); });
 
-  var topnames = nested.slice(0, num).map(function(d) { return d.key; });
-  data = data.filter(function(d) {
-    return topnames.indexOf(d.name) > -1;
-  });
+  // var topnames = nested.map(function(d) { return d.key; });
+  // data = data.filter(function(d) {
+  //   return topnames.indexOf(d.name) > -1;
+  // });
 
   // nest by name and rank by total popularity
-  window.byYear = {}
+  let byYear = {}
   d3.nest()
     .key(function(d) { return d.year; })
     .key(function(d) { return d.name; })
@@ -176,14 +174,8 @@ d3.queue()
   // Draw a circle for each center
   var countrySumRank = nested.map(function(d) { return d.key; });
   for (var year in single_centers) {
-    ctx.fillStyle = "#888";
-    // if (countrySumRank.indexOf(single_centers[year]) < numTop) {
-    //   ctx.fillStyle = color(single_centers[year]);
-    // } else {
-    //   ctx.fillStyle = "#888";
-    // }
-    
     single_centers[year].forEach(function(center) {
+      ctx.fillStyle = color(countrySumRank.indexOf(center) / num);
       ctx.beginPath();
       ctx.arc(xscale(year), yscale(byYear[year][center]), 5, 0, 2*Math.PI);
       ctx.fill();
@@ -191,47 +183,46 @@ d3.queue()
     });
   }
 
-  nested.slice(0, num).reverse().forEach(function(name, i) {
+  nested.forEach(function(name, i) {
     var yearspopular = name.value.data;
 
     if (name.key === "Senbatsu") {
       ctx.globalAlpha = 0.85;
-      ctx.strokeStyle = color(0);
-      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = "#888";
+      ctx.lineWidth = 5;
     } else {
       ctx.globalAlpha = 0.55;
-      ctx.strokeStyle = "#888";
+      ctx.strokeStyle = color(i / num);
       ctx.lineWidth = 1;
     }
-    // if (i >= num-numTop) {
-    //   ctx.globalAlpha = 0.85;
-    //   ctx.strokeStyle = color(name.key);
-    //   ctx.lineWidth = 2.5;
-    // } else {
-    //   ctx.globalAlpha = 0.55;
-    //   ctx.strokeStyle = "#888";
-    //   ctx.lineWidth = 1;
-    // }
 
     // bump line
     ctx.globalCompositeOperation = "darken";
     ctx.lineCap = "round";
+
     yearspopular.forEach(function(d, j) {
       if (j > 0) {
-        var previousYear = yearspopular[j-1].year;
+        let previousYear = yearspopular[j-1].year;
+        let curr = {
+          x: xscale(previousYear),
+          y: yscale(byYear[previousYear][name.key])
+        };
+        let next = {
+          x: xscale(d.year),
+          y: yscale(byYear[d.year][name.key])
+        };
 
         ctx.beginPath();
-        if ((d.year - previousYear) > 4) { //skipping games
-          ctx.setLineDash([5, 10]);
-        } else {
-          ctx.setLineDash([]);
-        }
-        ctx.moveTo(xscale(previousYear), yscale(byYear[previousYear][name.key]))
-        // ctx.lineTo(xscale(d.year), yscale(byYear[d.year][name.key]));
+        // if ((d.year - previousYear) > 4) { //skipping games
+        //   ctx.setLineDash([5, 10]);
+        // } else {
+        //   ctx.setLineDash([]);
+        // }
+        ctx.moveTo(curr.x, curr.y)
         ctx.bezierCurveTo(
-          xscale(previousYear)+15, yscale(byYear[previousYear][name.key]),
-          xscale(d.year)-15, yscale(byYear[d.year][name.key]),
-          xscale(d.year), yscale(byYear[d.year][name.key]));
+          curr.x + xscale.step()/2, curr.y,
+          next.x - xscale.step()/2, next.y,
+          next.x, next.y);
         // ctx.closePath();
         ctx.stroke();
       }
@@ -241,18 +232,13 @@ d3.queue()
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
   ctx.font = "10px sans-serif";
-  nested.slice(0, num).reverse().forEach(function(name, i) {
+  nested.forEach(function(name, i) {
     var yearspopular = name.value.data;
     if (name.key === "Senbatsu") {
-      ctx.fillStyle = color(0);
+      ctx.fillStyle = "white";
     } else {
-      ctx.fillStyle = "#555";
+      ctx.fillStyle = color(i / num);
     }
-    // if (i >= num-numTop) {
-    //   ctx.fillStyle = color(name.key);
-    // } else {
-    //   ctx.fillStyle = "#555";
-    // }
 
     ctx.globalCompositeOperation = "source-over";
     ctx.globalAlpha = 0.9;
@@ -261,7 +247,7 @@ d3.queue()
     ctx.save();
     ctx.textAlign = "end";
     var start = yearspopular[0].year;
-    var x = xscale(start)-10;
+    var x = xscale(start) - xscale.step()/2 - 10;
     var y = yscale(byYear[start][name.key]);
     // switch (name.key) {
     //   case "Indonesia":   x += 30; y -= 10; break;
@@ -275,7 +261,7 @@ d3.queue()
     // end names
     ctx.textAlign = "start";
     var end= yearspopular[yearspopular.length-1].year;
-    ctx.fillText(name.key, xscale(end)+10, yscale(byYear[end][name.key]));
+    ctx.fillText(name.key, xscale(end) + xscale.step()/2 + 10, yscale(byYear[end][name.key]));
   });
 
   // legend
