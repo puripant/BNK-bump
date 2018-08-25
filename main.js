@@ -1,9 +1,9 @@
 var num = 57;
 var numTop = 5;
 
-var margin = {top: 35, right: 70, bottom: 30, left: 70};
+var margin = {top: 70, right: 80, bottom: 70, left: 70};
 var width = 950,
-    height = 500;
+    height = 700;
 
 var devicePixelRatio = window.devicePixelRatio || 1;
 
@@ -24,13 +24,8 @@ var xscale = d3.scalePoint()
   // .domain([1959, 2017])
   .range([margin.left, width-margin.right]);
 
-var xaxis = d3.axisBottom()
-  // .scale(xscale)
-  .tickFormat(d3.format(""));
-
-var xaxis2 = d3.axisTop()
-  // .scale(xscale)
-  .tickFormat(d3.format(""));
+var xAxisTop = d3.axisTop();
+var xAxisBottom = d3.axisBottom();
 
 var yscale = d3.scaleLinear()
   .domain([0-0.2, num-0.5])
@@ -55,30 +50,47 @@ d3.queue()
     single_centers[single.name] = center.map(findNickname);
 
     let single_members = single.members.split(";");
-    single_members.forEach(function(member_name, i) {
+    members.forEach(function(member, i) {
+      let single_member_index = single_members.indexOf(member.name);
       data.push({
         year: single.name,
-        name: findNickname(member_name),
-        order: 100-i,
-        center: (center.indexOf(member_name) >= 0)? "y" : "n"
+        name: member.nickname,
+        order: (single_member_index >= 0)? 1 : 0,
+        center: (center.indexOf(member.name) >= 0)? "y" : "n"
       });
     });
+    // single_members.forEach(function(member_name, i) {
+    //   data.push({
+    //     year: single.name,
+    //     name: findNickname(member_name),
+    //     order: 100-i,
+    //     center: (center.indexOf(member_name) >= 0)? "y" : "n"
+    //   });
+    // });
   });
 
   let single_names = singles.map(function(single) { return single.name; });
   xscale.domain(single_names);
-  xaxis.scale(xscale);
-  xaxis2.scale(xscale);
-
-  svg.append("g")
-    .attr("class", "x axis")
-    .attr("transform", "translate(0," + (height-margin.bottom) + ")")
-    .call(xaxis);
+  xAxisTop.scale(xscale);
+  xAxisBottom.scale(xscale);
 
   svg.append("g")
     .attr("class", "x axis")
     .attr("transform", "translate(0," + (margin.top-10) + ")")
-    .call(xaxis2);
+    .call(xAxisTop)
+    .selectAll('text')
+      .attr("text-anchor", "start")
+      // .attr("dx", "1em")
+      .attr("transform", "rotate(-15)");
+
+  svg.append("g")
+    .attr("class", "x axis")
+    .attr("transform", "translate(0," + (height-margin.bottom) + ")")
+    .call(xAxisBottom)
+    .selectAll('text')
+      .attr("text-anchor", "start")
+      // .attr("dx", "1em")
+      .attr("transform", "rotate(15)");
 
   // Vertical guide line
   var hiddenMargin = 100;
