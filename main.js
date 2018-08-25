@@ -1,4 +1,4 @@
-var num = 11;
+var num = 57;
 var numTop = 5;
 
 var margin = {top: 35, right: 70, bottom: 30, left: 70};
@@ -20,7 +20,7 @@ var svg = d3.select("svg")
 var color = d3.scaleOrdinal()
   .range(["#DB7F85", "#50AB84", "#4C6C86", "#C47DCB", "#B59248", "#DD6CA7", "#E15E5A", "#5DA5B3", "#725D82", "#54AF52", "#954D56"]);
 
-var xscale = d3.scaleOrdinal()
+var xscale = d3.scalePoint()
   // .domain([1959, 2017])
   .range([margin.left, width-margin.right]);
 
@@ -44,36 +44,31 @@ d3.queue()
 .defer(d3.csv, "members.csv")
 .defer(d3.csv, "singles.csv")
 .await(function(error, members, singles) {
+  let findNickname = function(name) {
+    return members.find((member) => member.name === name).nickname;
+  }
+
   let data = [];
+  let single_centers = {};
   singles.forEach(function(single) {
-    let single_members = single.members.split(";");
     let center = (single.center)? single.center.split(";") : [];
+    single_centers[single.name] = center.map(findNickname);
+
+    let single_members = single.members.split(";");
     single_members.forEach(function(member_name, i) {
       data.push({
         year: single.name,
-        name: members.find((member) => member.name === member_name).nickname,
-        gold: 100-i,
-        host: (center.indexOf(member_name) >= 0)? "y" : "n"
+        name: findNickname(member_name),
+        order: 100-i,
+        center: (center.indexOf(member_name) >= 0)? "y" : "n"
       });
     });
   });
 
-  xscale.domain(singles.map(function(single) { return single.name; }));
+  let single_names = singles.map(function(single) { return single.name; });
+  xscale.domain(single_names);
   xaxis.scale(xscale);
   xaxis2.scale(xscale);
-
-  var hostCountries = {}; // Find host countries by year
-  data.forEach(function(d) {
-    // d.gold = +d.gold;
-    // d.year = +d.year;
-    if (d.host === "y") {
-      hostCountries[d.year] = d.name;
-    }
-  });
-
-  var years = Object.keys(hostCountries).map(function(d) {return +d;});
-  xaxis.tickValues(years);
-  xaxis2.tickValues(years);
 
   svg.append("g")
     .attr("class", "x axis")
@@ -106,9 +101,9 @@ d3.queue()
       var mousex = d3.mouse(this)[0]
       var x = xscale.domain()[d3.bisect(xscale.range(), mousex) - 1]; //xscale.invert(mousex);
       var found = false;
-      for (var i = 0; i < years.length; i++) {
-        if (Math.abs(years[i] - x) <= 1) { // game interval (2 years) in half
-          highlightedYear = years[i];
+      for (var i = 0; i < single_names.length; i++) {
+        if (Math.abs(single_names[i] - x) <= 1) { // game interval (2 years) in half
+          highlightedYear = single_names[i];
           found = true;
           break;
         }
@@ -119,12 +114,6 @@ d3.queue()
 
       mouseTrap.style("cursor", highlightedYear? "pointer":"auto");
       verticalGuide.attr("transform", "translate(" + (xscale(highlightedYear)+hiddenMargin) + ", 0)");
-    })
-    .on("click", function() {
-      if (highlightedYear) {
-        var url = "https://en.wikipedia.org/wiki/" + highlightedYear + ((highlightedYear <= 1975) ? "_Southeast_Asian_Peninsular_Games":"_Southeast_Asian_Games");
-        window.open(url, "_blank");
-      }
     });
 
   // nest by name and rank by total popularity
@@ -133,7 +122,7 @@ d3.queue()
     .rollup(function(leaves) {
       return {
         data: leaves,
-        sum: d3.sum(leaves, function(d) { return d.gold; })
+        sum: d3.sum(leaves, function(d) { return d.order; })
       };
     })
     .entries(data)
@@ -149,9 +138,9 @@ d3.queue()
   d3.nest()
     .key(function(d) { return d.year; })
     .key(function(d) { return d.name; })
-    // .sortValues(function(a, b) { return a.gold - b.gold; })
+    // .sortValues(function(a, b) { return a.order - b.order; })
     .rollup(function(leaves,i) {
-      return leaves[0].gold;
+      return leaves[0].order;
     })
     .entries(data)
     .forEach(function(year) {
@@ -166,18 +155,18 @@ d3.queue()
   var ctx = canvas.node().getContext("2d");
   ctx.scale(devicePixelRatio, devicePixelRatio);
 
-  // Draw a circle for each host country
+  // Draw a circle for each center
   var countrySumRank = nested.map(function(d) { return d.key; });
-  for (var year in hostCountries) {
-    if (countrySumRank.indexOf(hostCountries[year]) < numTop) {
-      ctx.fillStyle = color(hostCountries[year]);
+  for (var year in single_centers) {
+    if (countrySumRank.indexOf(single_centers[year]) < numTop) {
+      ctx.fillStyle = color(single_centers[year]);
     } else {
       ctx.fillStyle = "#888";
     }
 
-    if (byYear[year] && byYear[year][hostCountries[year]]) {
+    if (byYear[year] && byYear[year][single_centers[year]]) {
       ctx.beginPath();
-      ctx.arc(xscale(year), yscale(byYear[year][hostCountries[year]]), 5, 0, 2*Math.PI);
+      ctx.arc(xscale(year), yscale(byYear[year][single_centers[year]]), 5, 0, 2*Math.PI);
       ctx.fill();
       ctx.closePath();
     }
@@ -241,12 +230,12 @@ d3.queue()
     var start = yearspopular[0].year;
     var x = xscale(start)-10;
     var y = yscale(byYear[start][name.key]);
-    switch (name.key) {
-      case "Indonesia":   x += 30; y -= 10; break;
-      case "Philippines": x += 45; y -= 10; break;
-      case "Cambodia":    x += 10; y -= 10; break;
-      default: break;
-    }
+    // switch (name.key) {
+    //   case "Indonesia":   x += 30; y -= 10; break;
+    //   case "Philippines": x += 45; y -= 10; break;
+    //   case "Cambodia":    x += 10; y -= 10; break;
+    //   default: break;
+    // }
     ctx.fillText(name.key, x, y);
     ctx.restore();
 
@@ -266,5 +255,5 @@ d3.queue()
   ctx.closePath();
 
   ctx.textAlign = "start";
-  ctx.fillText("marks the years that each country hosts the SEA Games.", legendPos.x + 10, legendPos.y - 1);
+  ctx.fillText("marks the 'centers'.", legendPos.x + 10, legendPos.y - 1);
 });
