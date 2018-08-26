@@ -259,15 +259,19 @@ d3.queue()
     ctx.fillText(name.key, x + 5, y);
   });
 
-  // legend
-  var legendPos = {x: margin.left + xscale.step()/2, y: margin.top + height*0.60};
+  // Title & legend
+  const titlePos = {x: margin.left + xscale.step()/2, y: margin.top + height*0.60};
+  ctx.fillStyle = "black";
+  ctx.textAlign = "start";
 
-  ctx.fillStyle = "#888";
+  ctx.save();
+  ctx.font = ctx.font.replace(/\d+px/, "24px");
+  ctx.fillText("BNK48 Senbatsu", titlePos.x, titlePos.y);
+  ctx.restore();
+
   ctx.beginPath();
-  ctx.arc(legendPos.x, legendPos.y, 5, 0, 2*Math.PI);
+  ctx.arc(titlePos.x + 5, titlePos.y + 20, 5, 0, 2*Math.PI);
   ctx.fill();
   ctx.closePath();
-
-  ctx.textAlign = "start";
-  ctx.fillText("marks the 'centers'.", legendPos.x + 10, legendPos.y - 1);
+  ctx.fillText("marks the 'centers'.", titlePos.x + 15, titlePos.y + 20);
 });
