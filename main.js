@@ -48,40 +48,33 @@ d3.queue()
 .defer(d3.csv, "members.csv")
 .defer(d3.csv, "singles.csv")
 .await(function(error, members, singles) {
-  let findNickname = function(name) {
-    return members.find((member) => member.name === name).nickname;
-  }
-
   let data = [];
   let single_centers = {};
   singles.forEach(function(single) {
     let center = (single.center)? single.center.split(";") : [];
-    single_centers[single.name] = center.map(findNickname);
+    single_centers[single.name] = center.map(function(name) {
+      return members.find((member) => member.name === name).nickname;
+    });
 
     let single_members = single.members.split(";");
-    members.forEach(function(member, i) {
-      let single_member_index = single_members.indexOf(member.name);
-      data.push({
-        year: single.name,
-        name: member.nickname,
-        order: (single_member_index >= 0)? 1 : 0,
-        center: (center.indexOf(member.name) >= 0)? "y" : "n"
+    members
+      .filter(function(member) {
+        return member.year <= single.year;
+      })
+      .forEach(function(member) {
+        data.push({
+          year: single.name,
+          name: member.nickname,
+          order: (single_members.indexOf(member.name) >= 0)? 1 : 0,
+          center: (center.indexOf(member.name) >= 0)? "y" : "n"
+        });
       });
-    });
     data.push({
       year: single.name,
       name: "Senbatsu",
       order: 0.5,
       center: "n"
     });
-    // single_members.forEach(function(member_name, i) {
-    //   data.push({
-    //     year: single.name,
-    //     name: findNickname(member_name),
-    //     order: 100-i,
-    //     center: (center.indexOf(member_name) >= 0)? "y" : "n"
-    //   });
-    // });
   });
 
   let single_names = singles.map(function(single) { return single.name; });
@@ -184,7 +177,7 @@ d3.queue()
   }
 
   nested.forEach(function(name, i) {
-    var yearspopular = name.value.data;
+    var singlesByMember = name.value.data;
 
     if (name.key === "Senbatsu") {
       ctx.globalAlpha = 0.85;
@@ -200,9 +193,9 @@ d3.queue()
     ctx.globalCompositeOperation = "darken";
     ctx.lineCap = "round";
 
-    yearspopular.forEach(function(d, j) {
+    singlesByMember.forEach(function(d, j) {
       if (j > 0) {
-        let previousYear = yearspopular[j-1].year;
+        let previousYear = singlesByMember[j-1].year;
         let curr = {
           x: xscale(previousYear),
           y: yscale(byYear[previousYear][name.key])
@@ -233,7 +226,7 @@ d3.queue()
   ctx.textBaseline = "middle";
   ctx.font = "10px sans-serif";
   nested.forEach(function(name, i) {
-    var yearspopular = name.value.data;
+    var singlesByMember = name.value.data;
     if (name.key === "Senbatsu") {
       ctx.fillStyle = "white";
     } else {
@@ -246,7 +239,7 @@ d3.queue()
     // start names
     ctx.save();
     ctx.textAlign = "end";
-    var start = yearspopular[0].year;
+    var start = singlesByMember[0].year;
     var x = xscale(start) - xscale.step()/2 - 10;
     var y = yscale(byYear[start][name.key]);
     // switch (name.key) {
@@ -260,12 +253,12 @@ d3.queue()
 
     // end names
     ctx.textAlign = "start";
-    var end= yearspopular[yearspopular.length-1].year;
+    var end= singlesByMember[singlesByMember.length-1].year;
     ctx.fillText(name.key, xscale(end) + xscale.step()/2 + 10, yscale(byYear[end][name.key]));
   });
 
   // legend
-  var legendPos = {x: width*0.12, y: height*0.80};
+  var legendPos = {x: margin.left + xscale.step()/2, y: margin.top + height*0.50};
 
   ctx.fillStyle = "#888";
   ctx.beginPath();
