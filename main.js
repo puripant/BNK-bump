@@ -1,6 +1,6 @@
-var num = 58;
+var num = 53;
 
-var margin = {top: 60, right: 80, bottom: 60, left: 70};
+var margin = {top: 60, right: 50, bottom: 60, left: 50};
 var width = 950,
     height = 700;
 
@@ -16,7 +16,9 @@ var svg = d3.select("svg")
     .style("width", width + "px")
     .style("height", height + "px");
 
-let color = d3.interpolatePuRd;
+let color = function(t) {
+  return d3.interpolatePuRd(t + 0.2);
+}
 // var color = d3.scaleOrdinal()
 //   .range(["#DB7F85", "#50AB84", "#4C6C86", "#C47DCB", "#B59248", "#DD6CA7", "#E15E5A", "#5DA5B3", "#725D82", "#54AF52", "#954D56"]);
 
@@ -50,7 +52,7 @@ d3.queue()
 .await(function(error, members, singles) {
   let data = [];
   let single_centers = {};
-  singles.forEach(function(single) {
+  singles.forEach(function(single, single_index) {
     let center = (single.center)? single.center.split(";") : [];
     single_centers[single.name] = center.map(function(name) {
       return members.find((member) => member.name === name).nickname;
@@ -59,7 +61,7 @@ d3.queue()
     let single_members = single.members.split(";");
     members
       .filter(function(member) {
-        return member.year <= single.year;
+        return (member.year <= single.year) && (!member.last_single || single_index < member.last_single);
       })
       .forEach(function(member) {
         data.push({
@@ -100,30 +102,30 @@ d3.queue()
       // .attr("dx", "1em")
       .attr("transform", "rotate(15)");
 
-  // Vertical guide line
-  var hiddenMargin = 100;
-  var highlightedYear;
-  var verticalGuide = svg.append("line")
-    .attr("class", "guide")
-    .attr("x1", -hiddenMargin)
-    .attr("y1", margin.top - 10)
-    .attr("x2", -hiddenMargin)
-    .attr("y2", height - margin.bottom + 5)
-    .style("stroke-width", function() { return xscale.step(); })
-    .style("opacity", 0);
-  var mouseTrap = svg.append("rect")
-    .attr("width", width)
-    .attr("height", height)
-    .style("opacity", 0)
-    .on("mouseover", function() { verticalGuide.style("opacity", 0.1); })
-    .on("mouseout", function() { verticalGuide.style("opacity", 0); })
-    .on("mousemove", function() {
-      let mousex = d3.mouse(this)[0]
-      let highlightedYear = invertXscale(mousex);
-
-      // mouseTrap.style("cursor", highlightedYear? "pointer":"auto");
-      verticalGuide.attr("transform", "translate(" + (xscale(highlightedYear)+hiddenMargin) + ", 0)");
-    });
+  // // Vertical guide line
+  // var hiddenMargin = 100;
+  // var highlightedSingle;
+  // var verticalGuide = svg.append("line")
+  //   .attr("class", "guide")
+  //   .attr("x1", -hiddenMargin)
+  //   .attr("y1", margin.top - 10)
+  //   .attr("x2", -hiddenMargin)
+  //   .attr("y2", height - margin.bottom + 5)
+  //   .style("stroke-width", function() { return xscale.step(); })
+  //   .style("opacity", 0);
+  // var mouseTrap = svg.append("rect")
+  //   .attr("width", width)
+  //   .attr("height", height)
+  //   .style("opacity", 0)
+  //   .on("mouseover", function() { verticalGuide.style("opacity", 0.1); })
+  //   .on("mouseout", function() { verticalGuide.style("opacity", 0); })
+  //   .on("mousemove", function() {
+  //     let mousex = d3.mouse(this)[0]
+  //     let highlightedSingle = invertXscale(mousex);
+  //
+  //     // mouseTrap.style("cursor", highlightedSingle? "pointer":"auto");
+  //     verticalGuide.attr("transform", "translate(" + (xscale(highlightedSingle)+hiddenMargin) + ", 0)");
+  //   });
 
   // nest by name and rank by total popularity
   var nested = d3.nest()
@@ -239,26 +241,26 @@ d3.queue()
     // start names
     ctx.save();
     ctx.textAlign = "end";
-    var start = singlesByMember[0].year;
-    var x = xscale(start) - xscale.step()/2 - 10;
-    var y = yscale(byYear[start][name.key]);
-    // switch (name.key) {
-    //   case "Indonesia":   x += 30; y -= 10; break;
-    //   case "Philippines": x += 45; y -= 10; break;
-    //   case "Cambodia":    x += 10; y -= 10; break;
-    //   default: break;
-    // }
-    ctx.fillText(name.key, x, y);
+    let start = singlesByMember[0].year;
+    let x = xscale(start);
+    let y = yscale(byYear[start][name.key]);
+    ctx.fillText("█████", x, y);
+    ctx.fillStyle = "white";
+    ctx.fillText(name.key, x - 5, y);
     ctx.restore();
 
     // end names
     ctx.textAlign = "start";
-    var end= singlesByMember[singlesByMember.length-1].year;
-    ctx.fillText(name.key, xscale(end) + xscale.step()/2 + 10, yscale(byYear[end][name.key]));
+    let end= singlesByMember[singlesByMember.length-1].year;
+    x = xscale(end);
+    y = yscale(byYear[end][name.key]);
+    ctx.fillText("█████", x, y);
+    ctx.fillStyle = "white";
+    ctx.fillText(name.key, x + 5, y);
   });
 
   // legend
-  var legendPos = {x: margin.left + xscale.step()/2, y: margin.top + height*0.50};
+  var legendPos = {x: margin.left + xscale.step()/2, y: margin.top + height*0.60};
 
   ctx.fillStyle = "#888";
   ctx.beginPath();
